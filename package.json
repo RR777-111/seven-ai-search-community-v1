@@ -1,6 +1,7 @@
 {
   "name": "seven-ai-search-community",
-  "version": "1.0.0-private-candidate",
+  "version": "1.0.0",
+  "license": "MIT",
   "private": true,
   "packageManager": "pnpm@11.13.1",
   "scripts": {
