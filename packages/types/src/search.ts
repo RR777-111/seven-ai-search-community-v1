@@ -34,6 +34,9 @@ export interface SearchTiming {
   totalMs: number;
   rawCount: number;
   validCount: number;
+  validLinkCount?: number;
+  relevantCount?: number;
+  deduplicatedCount?: number;
   resultCount?: number;
   panSouStatus?: 'not_called' | 'success' | 'partial' | 'timeout' | 'error';
   timeoutReason?: string | null;

@@ -36,10 +36,10 @@ export class SearchResponseDto implements SearchResponse {
   @ApiPropertyOptional({ example: 1 })
   page?: number;
 
-  @ApiPropertyOptional({ example: 100 })
+  @ApiPropertyOptional({ example: 500 })
   pageSize?: number;
 
-  @ApiPropertyOptional({ example: 300 })
+  @ApiPropertyOptional({ example: 500 })
   maxResults?: number;
 
   @ApiPropertyOptional({ example: true })
@@ -65,6 +65,9 @@ export class SearchResponseDto implements SearchResponse {
       filterDedupeMs: 4,
       totalMs: 2068,
       rawCount: 80,
+      validLinkCount: 80,
+      relevantCount: 79,
+      deduplicatedCount: 79,
       validCount: 79,
       exhausted: true,
       truncated: false,

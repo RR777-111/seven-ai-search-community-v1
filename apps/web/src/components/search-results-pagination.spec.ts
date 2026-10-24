@@ -10,7 +10,7 @@ import {
 describe('search results pagination helpers', () => {
   it('shows 15 results initially when more are available', () => {
     assert.equal(SEARCH_RESULTS_BATCH_SIZE, 15);
-    assert.equal(getInitialVisibleResultCount(300), 15);
+    assert.equal(getInitialVisibleResultCount(500), 15);
   });
 
   it('shows every result when fewer than 15 are available', () => {
@@ -22,6 +22,18 @@ describe('search results pagination helpers', () => {
     assert.equal(getNextVisibleResultCount(15, 44), 30);
     assert.equal(getNextVisibleResultCount(30, 44), 44);
     assert.equal(getNextVisibleResultCount(44, 44), 44);
+  });
+
+  it('reaches all 500 results without skipping or exceeding the true total', () => {
+    let visible = getInitialVisibleResultCount(500);
+    const checkpoints = [visible];
+    while (visible < 500) {
+      visible = getNextVisibleResultCount(visible, 500);
+      checkpoints.push(visible);
+    }
+    assert.equal(checkpoints.length, 34);
+    assert.deepEqual(checkpoints.slice(-3), [480, 495, 500]);
+    assert.equal(getNextVisibleResultCount(visible, 500), 500);
   });
 
   it('resets a changed filter to the first 15 results', () => {

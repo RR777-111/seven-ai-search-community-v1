@@ -33,11 +33,12 @@ import { SEARCH_METRICS, type SearchMetrics } from '../interfaces/search-metrics
 import type { SearchResult } from '../interfaces/search-result.interface';
 import { ResourceFilter } from '../resource-filter/resource-filter.service';
 import { normalizeAllowedResourceSource } from '../resource-source/resource-source.config';
+import { getTitleRelevanceRank, type SearchRelevanceRank } from './search-relevance';
 
-export const SEARCH_RESULT_LIMIT = 300;
-export const SEARCH_RESULT_SOFT_TARGET_PER_SOURCE = 60;
+export const SEARCH_RESULT_LIMIT = 500;
+export const SEARCH_RESULT_SOFT_TARGET_PER_SOURCE = 100;
 export const SEARCH_DRIVE_WHITELIST_VERSION = 'v4';
-export const SEARCH_CACHE_VERSION = 'v5';
+export const SEARCH_CACHE_VERSION = 'v6';
 export const SEARCH_PROVIDER_RETRY_DELAY_MS = 300;
 export const NO_RESULTS_MESSAGE = '未找到有效资源，请重新输入关键词';
 export const SEARCH_TIMEOUT_CODE = 'SEARCH_TIMEOUT';
@@ -51,10 +52,10 @@ const SEARCH_RESULTS_PAGE = 1;
 const BRACKETED_TITLE_TAG_PATTERN =
   /【([^】]{0,40})】|\[([^\]]{0,40})\]|\(([^)]{0,40})\)|（([^）]{0,40})）|《([^》]{0,40})》|「([^」]{0,40})」|『([^』]{0,40})』/gu;
 const DECORATIVE_SYMBOL_PATTERN = /[\p{Extended_Pictographic}\uFE0F★☆◆◇●○◎■□▲△▼▽※＊*]+/gu;
-const REPEATED_SEPARATOR_PATTERN = /(?:[-_=+~～|｜/\\]{2,})+/g;
+const REPEATED_SEPARATOR_PATTERN = /(?:[-_=~～|｜/\\]{2,})+/g;
 const TITLE_SEGMENT_SEPARATOR_PATTERN = /\s*[|｜]+\s*/gu;
 const EDGE_SEPARATOR_PATTERN =
-  /^[\s\-_=+~～|｜/\\:：,，.。;；!！?？]+|[\s\-_=+~～|｜/\\:：,，.。;；!！?？]+$/g;
+  /^[\s\-_=~～|｜/\\:：,，;；!！?？]+|[\s\-_=~～|｜/\\:：,，.。;；!！?？]+$/g;
 const REPEATED_SOURCE_LABEL_PATTERN =
   /(百度网盘|夸克网盘|迅雷(?:云盘|网盘)|阿里云盘|UC网盘)(?:\s*(?:[|｜/·,:：-]+\s*)?\1)+/giu;
 const PROMOTION_TAIL_PATTERN =
@@ -66,9 +67,26 @@ type SearchProviderAttempt = {
   error?: unknown;
 };
 
+interface RankedSearchResult {
+  result: SearchResult;
+  rank: SearchRelevanceRank;
+  index: number;
+}
+
+interface CleanSearchResults {
+  results: SearchResult[];
+  truncated: boolean;
+  validLinkCount: number;
+  relevantCount: number;
+  deduplicatedCount: number;
+}
+
 interface SearchCacheValue {
   items: SearchResult[];
   rawCount: number;
+  validLinkCount: number;
+  relevantCount: number;
+  deduplicatedCount: number;
   exhausted: boolean;
   truncated: boolean;
   sourceCounts: SearchSourceCounts;
@@ -127,8 +145,9 @@ export class SearchService {
         timing.memoryCacheMs = Date.now() - memoryStartedAt;
         if (isSearchCacheValue(cachedValue) && cachedValue.items.length > 0) {
           const filterStartedAt = Date.now();
-          const cleaned = cleanSearchResults(cachedValue.items, this.resourceFilter);
+          const cleaned = cleanSearchResults(cachedValue.items, this.resourceFilter, keyword);
           timing.filterDedupeMs = Date.now() - filterStartedAt;
+          recordCleaningCounts(timing, cachedValue);
           timing.rawCount = cachedValue.rawCount;
           timing.validCount = cleaned.results.length;
           timing.resultCount = cleaned.results.length;
@@ -137,7 +156,7 @@ export class SearchService {
 
           const truncated = cachedValue.truncated || cleaned.truncated;
           const exhausted = cachedValue.exhausted && !truncated;
-                    return this.createTimedSearchResponse({
+          return this.createTimedSearchResponse({
             results: cleaned.results,
             exhausted,
             truncated,
@@ -160,8 +179,9 @@ export class SearchService {
             );
 
             const filterStartedAt = Date.now();
-            const cleaned = cleanSearchResults(redisPayload.items, this.resourceFilter);
+            const cleaned = cleanSearchResults(redisPayload.items, this.resourceFilter, keyword);
             timing.filterDedupeMs = Date.now() - filterStartedAt;
+            recordCleaningCounts(timing, redisPayload);
             timing.rawCount = redisPayload.rawCount;
             timing.validCount = cleaned.results.length;
             timing.resultCount = cleaned.results.length;
@@ -170,7 +190,7 @@ export class SearchService {
 
             const truncated = redisPayload.truncated || cleaned.truncated;
             const exhausted = redisPayload.exhausted && !truncated;
-                        return this.createTimedSearchResponse({
+            return this.createTimedSearchResponse({
               results: cleaned.results,
               exhausted,
               truncated,
@@ -209,6 +229,7 @@ export class SearchService {
         if (isStaleFallbackError(providerError)) {
           const staleResponse = await this.createStaleFallbackResponse({
             payload: staleCandidate,
+            keyword,
             startedAt,
             timing,
           });
@@ -221,8 +242,9 @@ export class SearchService {
       }
 
       const filterStartedAt = Date.now();
-      const cleaned = cleanSearchResults(providerResults, this.resourceFilter);
+      const cleaned = cleanSearchResults(providerResults, this.resourceFilter, keyword);
       timing.filterDedupeMs = Date.now() - filterStartedAt;
+      recordCleaningCounts(timing, cleaned);
       const results = cleaned.results;
       timing.validCount = results.length;
       timing.resultCount = results.length;
@@ -236,6 +258,9 @@ export class SearchService {
         const cacheValue = {
           items: results,
           rawCount: timing.rawCount,
+          validLinkCount: cleaned.validLinkCount,
+          relevantCount: cleaned.relevantCount,
+          deduplicatedCount: cleaned.deduplicatedCount,
           exhausted,
           truncated,
           sourceCounts,
@@ -325,6 +350,7 @@ export class SearchService {
 
   private async createStaleFallbackResponse(input: {
     payload: RedisSearchCachePayload | null;
+    keyword: string;
     startedAt: number;
     timing: SearchTiming;
   }): Promise<ApiResponsePayload<SearchResult[]> | null> {
@@ -333,8 +359,9 @@ export class SearchService {
     }
 
     const filterStartedAt = Date.now();
-    const cleaned = cleanSearchResults(input.payload.items, this.resourceFilter);
+    const cleaned = cleanSearchResults(input.payload.items, this.resourceFilter, input.keyword);
     input.timing.filterDedupeMs = Date.now() - filterStartedAt;
+    recordCleaningCounts(input.timing, input.payload);
     if (cleaned.results.length === 0) {
       return null;
     }
@@ -578,6 +605,9 @@ function createRedisSearchCachePayload(
     items: value.items,
     resultCount: value.items.length,
     rawCount: value.rawCount,
+    validLinkCount: value.validLinkCount,
+    relevantCount: value.relevantCount,
+    deduplicatedCount: value.deduplicatedCount,
     createdAt: new Date(now).toISOString(),
     freshUntil: new Date(now + freshTtlSeconds * 1000).toISOString(),
     normalizedQueryHash: identity.normalizedQueryHash,
@@ -594,6 +624,9 @@ function toSearchCacheValue(payload: RedisSearchCachePayload): SearchCacheValue 
   return {
     items: payload.items,
     rawCount: payload.rawCount,
+    validLinkCount: payload.validLinkCount,
+    relevantCount: payload.relevantCount,
+    deduplicatedCount: payload.deduplicatedCount,
     exhausted: payload.exhausted,
     truncated: payload.truncated,
     sourceCounts: payload.sourceCounts,
@@ -757,13 +790,34 @@ export function normalizeSearchResult(result: SearchResult): SearchResult {
 function cleanSearchResults(
   results: readonly SearchResult[],
   resourceFilter: ResourceFilter,
-): { results: SearchResult[]; truncated: boolean } {
+  keyword: string,
+): CleanSearchResults {
   const filteredResults = resourceFilter.filter(results);
-  const deduplicatedResults = deduplicateSearchResults(filteredResults.map(normalizeSearchResult));
+  const rankedResults = filteredResults
+    .map((result, index) => {
+      const normalizedResult = normalizeSearchResult(result);
+      const rank = getTitleRelevanceRank(normalizedResult.title, keyword);
+      return rank === null ? null : { result: normalizedResult, rank, index };
+    })
+    .filter((result): result is RankedSearchResult => result !== null)
+    .sort((left, right) => left.rank - right.rank || left.index - right.index);
+  const deduplicatedResults = deduplicateSearchResults(rankedResults);
   return {
     results: aggregateSearchResults(deduplicatedResults),
     truncated: deduplicatedResults.length > SEARCH_RESULT_LIMIT,
+    validLinkCount: filteredResults.length,
+    relevantCount: rankedResults.length,
+    deduplicatedCount: deduplicatedResults.length,
   };
+}
+
+function recordCleaningCounts(
+  timing: SearchTiming,
+  counts: Pick<CleanSearchResults, 'validLinkCount' | 'relevantCount' | 'deduplicatedCount'>,
+): void {
+  timing.validLinkCount = counts.validLinkCount;
+  timing.relevantCount = counts.relevantCount;
+  timing.deduplicatedCount = counts.deduplicatedCount;
 }
 
 function createOptionalSearchResultFields(
@@ -836,57 +890,61 @@ function isLowValueTitleTag(tagContent: string): boolean {
   return false;
 }
 
-function deduplicateSearchResults(results: readonly SearchResult[]): SearchResult[] {
+function deduplicateSearchResults(results: readonly RankedSearchResult[]): RankedSearchResult[] {
   const seenUrls = new Set<string>();
-  const uniqueResults: SearchResult[] = [];
+  const uniqueResults: RankedSearchResult[] = [];
 
-  for (const result of results) {
-    const urlKey = createUrlDeduplicationKey(result.url);
+  for (const ranked of results) {
+    const urlKey = createUrlDeduplicationKey(ranked.result.url);
 
     if (seenUrls.has(urlKey)) {
       continue;
     }
 
     seenUrls.add(urlKey);
-    uniqueResults.push(result);
+    uniqueResults.push(ranked);
   }
 
   return uniqueResults;
 }
 
-function aggregateSearchResults(results: readonly SearchResult[]): SearchResult[] {
+function aggregateSearchResults(results: readonly RankedSearchResult[]): SearchResult[] {
   if (results.length <= SEARCH_RESULT_LIMIT) {
-    return [...results];
+    return results.map(({ result }) => result);
   }
 
   const selectedResults: SearchResult[] = [];
-  const selectedIndexes = new Set<number>();
   const sourceCounts = new Map<string, number>();
 
-  for (const [index, result] of results.entries()) {
-    const sourceKey = getSearchResultSourceKey(result);
-    const sourceCount = sourceCounts.get(sourceKey) ?? 0;
-    if (sourceCount >= SEARCH_RESULT_SOFT_TARGET_PER_SOURCE) {
-      continue;
+  for (const rank of [0, 1, 2] as const) {
+    const bySource = new Map<string, { items: RankedSearchResult[]; next: number }>();
+    for (const ranked of results) {
+      if (ranked.rank !== rank) continue;
+      const source = getSearchResultSourceKey(ranked.result);
+      const bucket = bySource.get(source) ?? { items: [], next: 0 };
+      bucket.items.push(ranked);
+      bySource.set(source, bucket);
     }
 
-    sourceCounts.set(sourceKey, sourceCount + 1);
-    selectedIndexes.add(index);
-    selectedResults.push(result);
+    for (const respectSoftTarget of [true, false]) {
+      let tookResult: boolean;
+      do {
+        tookResult = false;
+        for (const [source, bucket] of bySource) {
+          if (selectedResults.length >= SEARCH_RESULT_LIMIT) return selectedResults;
+          const count = sourceCounts.get(source) ?? 0;
+          if (bucket.next >= bucket.items.length ||
+            (respectSoftTarget && count >= SEARCH_RESULT_SOFT_TARGET_PER_SOURCE)) continue;
+
+          selectedResults.push(bucket.items[bucket.next++].result);
+          sourceCounts.set(source, count + 1);
+          tookResult = true;
+        }
+      } while (tookResult);
+    }
   }
 
-  for (const [index, result] of results.entries()) {
-    if (selectedResults.length >= SEARCH_RESULT_LIMIT) {
-      break;
-    }
-    if (selectedIndexes.has(index)) {
-      continue;
-    }
-
-    selectedResults.push(result);
-  }
-
-  return selectedResults.slice(0, SEARCH_RESULT_LIMIT);
+  return selectedResults;
 }
 
 function getSearchResultSourceKey(result: SearchResult): string {
@@ -1037,7 +1095,13 @@ function isSearchCacheValue(value: unknown): value is SearchCacheValue {
   return (
     Array.isArray(candidate.items) &&
     Number.isInteger(candidate.rawCount) &&
-    Number(candidate.rawCount) >= candidate.items.length &&
+    Number.isInteger(candidate.validLinkCount) &&
+    Number.isInteger(candidate.relevantCount) &&
+    Number.isInteger(candidate.deduplicatedCount) &&
+    Number(candidate.rawCount) >= Number(candidate.validLinkCount) &&
+    Number(candidate.validLinkCount) >= Number(candidate.relevantCount) &&
+    Number(candidate.relevantCount) >= Number(candidate.deduplicatedCount) &&
+    Number(candidate.deduplicatedCount) >= candidate.items.length &&
     typeof candidate.exhausted === 'boolean' &&
     typeof candidate.truncated === 'boolean' &&
     typeof candidate.sourceCounts === 'object' &&

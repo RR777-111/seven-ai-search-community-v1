@@ -14,6 +14,9 @@ const OPTIONAL_SEARCH_TIMING_NUMBER_FIELDS = [
   'memoryCacheMs',
   'redisCacheMs',
   'cacheWriteMs',
+  'validLinkCount',
+  'relevantCount',
+  'deduplicatedCount',
   'resultCount',
 ] as const;
 const SEARCH_CACHE_STATUS_VALUES = ['memory_fresh', 'redis_fresh', 'redis_stale', 'miss'] as const;
