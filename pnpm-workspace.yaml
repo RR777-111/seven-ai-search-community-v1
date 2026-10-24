@@ -5,3 +5,8 @@ packages:
 allowBuilds:
   '@scarf/scarf': false
   sharp: false
+
+# Nest's default JSON parser accepts compressed request bodies.
+# GHSA-27r3-jxmh-p828 is fixed in 2.4.0; keep the native parser and its API.
+overrides:
+  body-parser: 2.4.0
