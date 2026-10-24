@@ -1,0 +1,1 @@
+export function Footer({ variant = 'default' }: { variant?: 'default' | 'neo' }) { return <footer className={variant === 'neo' ? 'mx-auto w-full max-w-[1120px] border-t border-[#1b1b1b] px-4 py-6 text-center text-sm font-semibold text-[#4b4b4b]' : 'mx-auto w-full max-w-[1120px] border-t px-4 py-6 text-center text-sm'}>Seven AI Search Community · 搜索结果来自第三方公开索引，请自行核实链接。</footer>; }

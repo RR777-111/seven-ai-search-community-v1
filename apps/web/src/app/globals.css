@@ -1,0 +1,722 @@
+@import 'tailwindcss';
+
+:root {
+  --background: #fbfdff;
+  --foreground: #0f172a;
+  --primary: #0f172a;
+  --accent: #2563eb;
+  --app-background: #fbfdff;
+  --surface: #ffffff;
+  --border: #dbe7f5;
+  --muted-text: #667085;
+  --subtle-surface: #f7faff;
+  --error-text: #b91c1c;
+  --error-surface: #fef2f2;
+  --font-seven-display:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-seven-body:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-seven-brand:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-accent: var(--accent);
+  --color-app-background: var(--app-background);
+  --color-surface: var(--surface);
+  --color-app-border: var(--border);
+  --color-muted-text: var(--muted-text);
+  --color-subtle-surface: var(--subtle-surface);
+  --color-error-text: var(--error-text);
+  --color-error-surface: var(--error-surface);
+  --font-sans: Arial, Helvetica, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #f8fafc;
+    --foreground: #111827;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+
+.seven-font-display {
+  font-family: var(--font-seven-display);
+  letter-spacing: 0;
+}
+
+.seven-font-body {
+  font-family: var(--font-seven-body);
+  letter-spacing: 0;
+}
+
+.seven-font-brand {
+  font-family: var(--font-seven-brand);
+  letter-spacing: 0;
+}
+
+.neo-home-header {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100vw;
+  height: calc(64px + env(safe-area-inset-top));
+  margin: 0 auto;
+  padding: env(safe-area-inset-top) 12px 0;
+  overflow: visible;
+  background: #eeeeee;
+}
+
+.neo-home-header > * {
+  min-width: 0;
+}
+
+.neo-brand {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.75rem;
+  color: #1b1b1b;
+  text-decoration: none;
+}
+
+.neo-page-shell {
+  display: flex;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 100vw;
+  min-width: 0;
+  flex-direction: column;
+  overflow-x: clip;
+  overflow-y: visible;
+  background: #eeeeee;
+  color: #1b1b1b;
+}
+
+.neo-page-content {
+  flex: 1 0 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+.neo-disclosure-summary {
+  display: flex;
+  cursor: pointer;
+  list-style: none;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 1.125rem;
+  font-weight: 900;
+  line-height: 1.5rem;
+}
+
+.neo-disclosure-summary::-webkit-details-marker {
+  display: none;
+}
+
+.neo-disclosure-icon {
+  display: inline-flex;
+  width: 1.25rem;
+  flex: 0 0 1.25rem;
+  justify-content: center;
+  color: #1b1b1b;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.neo-disclosure-icon::before {
+  content: '▶';
+}
+
+.neo-disclosure[open] .neo-disclosure-icon::before {
+  content: '▼';
+}
+
+.neo-disclosure-body {
+  margin-top: 1rem;
+}
+
+.enter-search-button {
+  display: inline-flex;
+  width: 54px;
+  height: 42px;
+  flex: 0 0 54px;
+  align-items: center;
+  justify-content: center;
+  color: #1b1b1b;
+  background: transparent;
+  transition: transform 120ms ease;
+}
+
+.enter-search-button svg {
+  display: block;
+  width: 54px;
+  height: 40px;
+  overflow: visible;
+}
+
+.enter-search-button text {
+  fill: #1b1b1b;
+  font-family: var(--font-seven-body);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.enter-search-button:hover {
+  transform: translate(1px, 1px);
+}
+
+.enter-search-button:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid #1b1b1b;
+  outline-offset: 2px;
+}
+
+.neo-auth-nav {
+  position: relative;
+  z-index: 30;
+  isolation: isolate;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: max-content;
+  max-width: calc(100vw - 64px);
+  overflow: visible;
+  color: #1b1b1b;
+  font-family: var(--font-seven-body);
+  white-space: nowrap;
+}
+
+.neo-auth-nav::before,
+.neo-auth-nav::after,
+.neo-auth-link::before,
+.neo-auth-link::after {
+  content: none;
+}
+
+.ordinary-user-nav {
+  display: grid;
+  width: min(324px, calc(100vw - 82px));
+  min-width: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 2px solid #1b1b1b;
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: 3px 3px 0 #1b1b1b;
+  overflow: hidden;
+}
+
+.ordinary-nav-item {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-right: 2px solid #1b1b1b;
+  background: #ffffff;
+  color: #1b1b1b;
+  cursor: pointer;
+  font-family: var(--font-seven-body);
+  font-size: 0.75rem;
+  font-weight: 900;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.referral-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  border: 2px solid #1b1b1b;
+  border-radius: 4px;
+  background: #ffffff;
+  padding: 0.625rem 0.75rem;
+  color: #1b1b1b;
+  font: inherit;
+  font-weight: 700;
+  outline: none;
+}
+
+.referral-input:focus {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+}
+
+.ordinary-nav-item:last-child {
+  border-right: 0;
+}
+
+.ordinary-nav-item:hover,
+.ordinary-nav-item-selected {
+  background: #ffdb3b;
+}
+
+.ordinary-nav-item:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid #7c3aed;
+  outline-offset: -3px;
+}
+
+@media (max-width: 639px) {
+  .ordinary-user-nav {
+    width: min(264px, calc(100vw - 68px));
+    box-shadow: 2px 2px 0 #1b1b1b;
+  }
+
+  .ordinary-nav-item {
+    min-height: 40px;
+    padding: 0 6px;
+    font-size: 0.8125rem;
+  }
+}
+
+.neo-auth-link {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: #1b1b1b;
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1;
+  opacity: 1;
+  overflow: visible;
+  text-decoration: none;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.neo-auth-link-login {
+  border: 2px solid transparent;
+  background: transparent;
+  padding: 0 8px;
+}
+
+.neo-auth-link-login:hover {
+  border-color: #1b1b1b;
+  background: #ffffff;
+}
+
+.neo-auth-link-register {
+  border: 2px solid #1b1b1b;
+  background: #ffdb3b;
+  padding: 0 10px;
+  box-shadow: 2px 2px 0 #1b1b1b;
+}
+
+.neo-auth-link-register:hover {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 #1b1b1b;
+}
+
+.neo-auth-link-register:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 #1b1b1b;
+}
+
+.neo-auth-link:focus-visible {
+  outline: 3px solid #1b1b1b;
+  outline-offset: 3px;
+}
+
+.neo-card,
+.neo-input,
+.neo-button,
+.neo-alert {
+  border: 2px solid #1b1b1b;
+  border-radius: 6px;
+  box-shadow: 4px 4px 0 #1b1b1b;
+  font-family: var(--font-seven-body);
+  letter-spacing: 0;
+}
+
+.neo-card {
+  background: #ffffff;
+}
+
+.neo-input {
+  min-height: 48px;
+  min-width: 0;
+  width: 100%;
+  background: #ffffff;
+  color: #1b1b1b;
+  padding: 0 14px;
+  outline: none;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background-color 120ms ease;
+}
+
+.neo-input::placeholder {
+  color: #6b6b6b;
+}
+
+.neo-input:hover {
+  background: #fafafa;
+}
+
+.neo-input:focus-visible,
+.neo-button:focus-visible,
+.neo-password-toggle:focus-visible,
+.neo-card a:focus-visible {
+  outline: 3px solid #1b1b1b;
+  outline-offset: 3px;
+}
+
+.neo-input:disabled,
+.neo-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.neo-input-error {
+  border-color: #b42318;
+}
+
+.neo-button {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #1b1b1b;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 800;
+  padding: 0 18px;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background-color 120ms ease;
+}
+
+.neo-logo-mark {
+  color: #7c3aed;
+  font-family: var(--font-seven-brand);
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.neo-doodle-category {
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    color 120ms ease;
+}
+
+.neo-doodle-category:hover {
+  transform: rotate(-1.5deg) translate(1px, 1px);
+  box-shadow: 1px 1px 0 #1b1b1b;
+}
+
+.neo-doodle-category:active {
+  transform: rotate(0deg) translate(3px, 3px);
+  box-shadow: 0 0 0 #1b1b1b;
+}
+
+.neo-button:hover:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 #1b1b1b;
+  background: #303030;
+}
+
+.neo-button:active:not(:disabled) {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 #1b1b1b;
+}
+
+.neo-button:disabled {
+  background: #969696;
+}
+
+.neo-password-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  min-height: 44px;
+  min-width: 52px;
+  padding: 4px 8px;
+  color: #1b1b1b;
+  font-size: 0.75rem;
+  font-weight: 800;
+  transform: translateY(-50%);
+}
+
+.neo-alert {
+  padding: 10px 12px;
+  color: #1b1b1b;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.neo-alert-error {
+  background: #ffd9d5;
+}
+
+.neo-alert-success {
+  background: #d8f4c8;
+}
+
+.neo-alert-info {
+  background: #e5e5e5;
+}
+
+.neo-search-button {
+  width: 44px;
+  min-height: 44px;
+  flex: 0 0 44px;
+  border-radius: 999px;
+  padding: 0;
+}
+
+.neo-search-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.neo-search-shell {
+  border: 2px solid #1b1b1b;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 3px 3px 0 #1b1b1b;
+}
+
+.neo-search-input {
+  min-height: 44px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0 10px;
+}
+
+.neo-search-input:hover {
+  background: transparent;
+}
+
+.neo-results-panel {
+  border: 2px solid #1b1b1b;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 3px 3px 0 #1b1b1b;
+}
+
+.neo-results-panel-muted {
+  background: #dddddd;
+}
+
+.neo-result-filter {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #1b1b1b;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #1b1b1b;
+  font-size: 0.875rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0 12px;
+  white-space: nowrap;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background-color 120ms ease;
+}
+
+.neo-result-filter:hover:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 #1b1b1b;
+}
+
+.neo-result-filter:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 #1b1b1b;
+}
+
+.neo-result-filter[aria-pressed='true'] {
+  background: #ffdb3b;
+  box-shadow: 2px 2px 0 #1b1b1b;
+}
+
+.neo-result-filter:focus-visible {
+  outline: 3px solid #1b1b1b;
+  outline-offset: 3px;
+}
+
+.neo-result-card {
+  border: 2px solid #1b1b1b;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 3px 3px 0 #1b1b1b;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background-color 120ms ease;
+}
+
+.neo-result-card:hover {
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0 #1b1b1b;
+}
+
+.neo-result-card:focus-within {
+  box-shadow: 3px 3px 0 #1b1b1b;
+}
+
+.neo-result-card-meta {
+  color: #4b4b4b;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.neo-result-card-source {
+  display: inline-flex;
+  align-items: center;
+  border: 2px solid #1b1b1b;
+  border-radius: 4px;
+  background: #ffdb3b;
+  box-shadow: 2px 2px 0 #1b1b1b;
+  color: #1b1b1b;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0.3rem 0.5rem;
+}
+
+.neo-result-state {
+  border: 2px solid #1b1b1b;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 4px 4px 0 #1b1b1b;
+}
+
+.neo-result-state-loading {
+  background: #f6f6f6;
+}
+
+.neo-result-state-error {
+  background: #ffd9d5;
+}
+
+.neo-result-state-empty {
+  background: #ffffff;
+}
+
+.neo-result-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.neo-result-state-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.neo-result-state-dot {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #1b1b1b;
+  background: #ffdb3b;
+  box-shadow: 2px 2px 0 #1b1b1b;
+}
+
+@media (min-width: 640px) {
+  .neo-home-header {
+    height: calc(72px + env(safe-area-inset-top));
+    max-width: 1120px;
+    padding: env(safe-area-inset-top) 24px 0;
+  }
+
+  .neo-auth-nav {
+    gap: 8px;
+  }
+
+  .neo-auth-link-login {
+    padding: 0 12px;
+  }
+
+  .neo-auth-link-register {
+    padding: 0 16px;
+    box-shadow: 3px 3px 0 #1b1b1b;
+  }
+
+  .neo-search-button {
+    width: 48px;
+    min-height: 48px;
+    flex-basis: 48px;
+  }
+
+  .neo-search-input {
+    min-height: 48px;
+    padding: 0 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .neo-input,
+  .neo-button,
+  .neo-doodle-category {
+    transition: none;
+  }
+
+  .neo-button:hover:not(:disabled),
+  .neo-button:active:not(:disabled),
+  .neo-doodle-category:hover,
+  .neo-doodle-category:active {
+    transform: none;
+  }
+
+  .neo-result-filter,
+  .neo-result-card {
+    transition: none;
+  }
+
+  .neo-result-filter:hover:not(:disabled),
+  .neo-result-filter:active:not(:disabled),
+  .neo-result-card:hover {
+    transform: none;
+  }
+}

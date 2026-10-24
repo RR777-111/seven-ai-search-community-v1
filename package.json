@@ -1,0 +1,11 @@
+{
+  "name": "seven-ai-search-community",
+  "version": "1.0.0-private-candidate",
+  "private": true,
+  "packageManager": "pnpm@11.13.1",
+  "scripts": {
+    "typecheck": "pnpm --filter api typecheck && pnpm --filter web typecheck",
+    "test": "pnpm --filter api test && pnpm --filter web test",
+    "build": "pnpm --filter api build && pnpm --filter web build"
+  }
+}
