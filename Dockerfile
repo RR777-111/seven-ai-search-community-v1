@@ -30,6 +30,8 @@ RUN --network=none pnpm --filter web build
 
 FROM api-build AS api
 ENV NODE_ENV=production
+COPY LICENSE THIRD_PARTY_NOTICES.md /usr/share/licenses/community/
+COPY licenses/ /usr/share/licenses/community/third-party/
 WORKDIR /app/apps/api
 EXPOSE 3001
 CMD ["node", "dist/main.js"]
@@ -37,6 +39,8 @@ CMD ["node", "dist/main.js"]
 FROM web-build AS web
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
+COPY LICENSE THIRD_PARTY_NOTICES.md /usr/share/licenses/community/
+COPY licenses/ /usr/share/licenses/community/third-party/
 WORKDIR /app/apps/web
 EXPOSE 3000
 CMD ["node", "server.mjs"]
