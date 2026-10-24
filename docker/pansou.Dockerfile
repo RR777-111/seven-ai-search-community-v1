@@ -27,6 +27,8 @@ RUN apk add --no-cache ca-certificates tzdata \
     && mkdir -p /app/cache && chown -R 10001:10001 /app
 COPY --from=build /out/pansou /app/pansou
 COPY --from=build /notices /usr/share/licenses/pansou
+COPY LICENSE THIRD_PARTY_NOTICES.md /usr/share/licenses/community/
+COPY licenses/ /usr/share/licenses/community/third-party/
 LABEL org.opencontainers.image.source="https://github.com/fish2018/pansou" \
       org.opencontainers.image.revision="221665fb2c9279f22af4684ea2d8c0c331eac1cc" \
       org.opencontainers.image.licenses="MIT"

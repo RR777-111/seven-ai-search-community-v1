@@ -1,11 +1,7 @@
-name: seven-ai-search-community-v1
+name: seven-ai-search-community-v101
 services:
   web:
-    build:
-      context: .
-      target: web
-      args:
-        API_BASE_URL: http://api:3001
+    image: ghcr.io/rr777-111/seven-ai-search-community-v1-web@sha256:60ae3b2b2280403f59bc8868c9e2e7ad58099c93407bdd3f56a87706f5f05356
     environment:
       NODE_ENV: production
       API_BASE_URL: http://api:3001
@@ -23,9 +19,7 @@ services:
       start_period: 10s
     networks: [community]
   api:
-    build:
-      context: .
-      target: api
+    image: ghcr.io/rr777-111/seven-ai-search-community-v1-api@sha256:d473dd0825653e750d38c0f97c09df39737d4077267c39948f3b86eee54bde7c
     environment:
       NODE_ENV: production
       APP_PORT: 3001
@@ -52,9 +46,7 @@ services:
       start_period: 10s
     networks: [community]
   pansou:
-    build:
-      context: .
-      dockerfile: docker/pansou.Dockerfile
+    image: ghcr.io/rr777-111/seven-ai-search-community-v1-pansou@sha256:9aa8ec13663e338c63eab72d72087df5cf6726e83c3d7686d5d5354024d6b900
     environment:
       PORT: 8888
       AUTH_ENABLED: "false"
@@ -78,7 +70,7 @@ services:
     security_opt: [no-new-privileges:true]
     networks: [community]
   redis:
-    image: redis:7-alpine
+    image: redis:7-alpine@sha256:57e4255cc971b1c8d6f8a6ca283ac01bc3ecdd914273ef6bfaede87aaecd6541
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis_data:/data
@@ -92,7 +84,7 @@ networks:
   community:
     ipam:
       config:
-        - subnet: ${COMMUNITY_SUBNET:-10.200.250.0/24}
+        - subnet: ${COMMUNITY_SUBNET:-10.200.249.0/24}
 volumes:
   redis_data: {}
   pansou_cache: {}
