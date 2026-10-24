@@ -6,12 +6,10 @@
 
 ## 启动
 
-当前自托管搜索候选位于 `fix/self-hosted-search`，尚未合并 `main`。验收候选请明确克隆该分支；直接克隆默认 `main` 不包含本轮自建搜索修复。
-
 需要 Docker Engine / Docker Desktop 与支持 `--wait` 的 Compose v2 或更新版本。首次构建须能访问 Docker Hub、GitHub codeload、官方 npm、Go 模块服务及 Alpine 软件仓库。
 
 ```bash
-git clone --branch fix/self-hosted-search https://github.com/RR777-111/seven-ai-search-community-v1.git
+git clone https://github.com/RR777-111/seven-ai-search-community-v1.git
 cd seven-ai-search-community-v1
 docker compose up --build --wait
 ```
