@@ -1,0 +1,22 @@
+# Advanced source build. The default compose.yaml uses pinned prebuilt images.
+services:
+  web:
+    image: seven-ai-search-community-source-web:local
+    pull_policy: build
+    build:
+      context: .
+      target: web
+      args:
+        API_BASE_URL: http://api:3001
+  api:
+    image: seven-ai-search-community-source-api:local
+    pull_policy: build
+    build:
+      context: .
+      target: api
+  pansou:
+    image: seven-ai-search-community-source-pansou:local
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: docker/pansou.Dockerfile
