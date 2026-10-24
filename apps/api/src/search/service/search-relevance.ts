@@ -20,10 +20,20 @@ const RELATED_CONCEPTS = [
   },
 ] as const;
 
+const AI_ENTERTAINMENT_FORMAT = /(?:恋综|综艺|电视剧|动漫|动画|短剧|网剧)/u;
+const AI_FILM_FORMAT = /电影/u;
+const MEDIA_PACKAGE = /(?:1080p|2160p|4k|字幕|蓝光|全集|全\d+期|更新\d+期|第\d+集|s\d+e\d+)/iu;
+const AI_TECHNICAL_CONTEXT =
+  /(?:教程|教学|课程|实战|制作|剪辑|创作|原理|技术|应用|提示词|模型|工具|开发|训练|科普|入门|分析|生成|指南|工作流|教材|从零到精通)/u;
+
 export function getTitleRelevanceRank(title: string, keyword: string): SearchRelevanceRank | null {
   const normalizedTitle = normalize(title);
   const normalizedKeyword = normalize(keyword);
   if (!normalizedTitle || !normalizedKeyword) return null;
+
+  if (isAiConceptQuery(normalizedKeyword) && isAiAbbreviationInEntertainmentTitle(normalizedTitle)) {
+    return null;
+  }
 
   if (containsTerm(normalizedTitle, normalizedKeyword)) return 0;
 
@@ -59,6 +69,21 @@ export function getTitleRelevanceRank(title: string, keyword: string): SearchRel
   }
 
   return coreTerms.every((term) => containsTerm(normalizedTitle, term)) ? 1 : null;
+}
+
+function isAiConceptQuery(keyword: string): boolean {
+  if (['人工智能', 'ai', 'artificial intelligence'].includes(keyword)) return true;
+  const coreTerms = getCoreTerms(keyword);
+  return coreTerms.length === 1 && (coreTerms[0] === '人工智能' || coreTerms[0] === 'ai');
+}
+
+function isAiAbbreviationInEntertainmentTitle(title: string): boolean {
+  if (!containsTerm(title, 'ai') || containsTerm(title, '人工智能') ||
+    containsTerm(title, 'artificial intelligence') || AI_TECHNICAL_CONTEXT.test(title)) {
+    return false;
+  }
+  return (AI_ENTERTAINMENT_FORMAT.test(title) || AI_FILM_FORMAT.test(title)) &&
+    MEDIA_PACKAGE.test(title);
 }
 
 function getCoreTerms(keyword: string): string[] {

@@ -67,6 +67,38 @@ function createHarness(initialResults: SearchResult[]) {
 }
 
 describe('Community search quality and 500-result allocation', () => {
+  it('keeps AI learning material while excluding abbreviation-only entertainment across cache reads', async () => {
+    const lesson = makeResult('QUARK', 1, 'AI电影制作教程 1080P');
+    const book = makeResult('BAIDU', 2, '《AI图景：人工智能应用》');
+    const harness = createHarness([
+      lesson,
+      book,
+      makeResult('UC', 3, 'AI恋综《我的AI搭档》1080P 简中字幕 全06期'),
+    ]);
+    const first = await harness.service.search('人工智能');
+    assert.deepEqual(first.data.map(({ url }) => url).sort(), [lesson.url, book.url].sort());
+    assert.equal(first.timing?.relevantCount, 2);
+
+    const memoryHit = await harness.service.search('人工智能');
+    assert.equal(memoryHit.cacheStatus, 'memory_fresh');
+    assert.deepEqual(memoryHit.data, first.data);
+
+    harness.memory.clear();
+    const redisHit = await harness.service.search('人工智能');
+    assert.equal(redisHit.cacheStatus, 'redis_fresh');
+    assert.deepEqual(redisHit.data, first.data);
+
+    harness.memory.clear();
+    const [key, raw] = [...harness.redisValues.entries()][0];
+    const stale = JSON.parse(raw) as Record<string, unknown>;
+    stale.freshUntil = new Date(Date.now() - 1000).toISOString();
+    harness.redisValues.set(key, JSON.stringify(stale));
+    harness.setProviderError(new SearchProviderTimeoutException());
+    const fallback = await harness.service.search('人工智能');
+    assert.equal(fallback.cacheStatus, 'redis_stale');
+    assert.deepEqual(fallback.data, first.data);
+  });
+
   it('preserves technical title symbols through fresh, memory, Redis and stale results', async () => {
     for (const [keyword, titles, noise] of [
       ['C++', ['C++ Primer', 'C++17入门'], 'C语言 Primer'],

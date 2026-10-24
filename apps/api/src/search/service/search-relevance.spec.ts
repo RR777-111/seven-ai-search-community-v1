@@ -3,6 +3,52 @@ import { describe, it } from 'node:test';
 import { getTitleRelevanceRank } from './search-relevance';
 
 describe('getTitleRelevanceRank', () => {
+  it('measures AI false positives and false negatives against observed search titles', () => {
+    // Manually labeled titles from the isolated real PanSou search on 2026-10-24.
+    const relevant = [
+      '《AI图景：Sora时代的人工智能应用》(epub)',
+      '《掌控AI进阶之路-中小学生探索人工智能》(epub)',
+      '学习资料: 《人工智能+PPT超级表达力课，利用人工智能少改稿高效率，又快又好的完成PPT》',
+      '学习资料: 《人工智能-必备数学基础》',
+      '学习资料: 《强化学习必修课：引领人工智能新时代》',
+      '学习资料: 《卢菁博士的人工智能体系课 (进阶版)》',
+      '学习资料: 《小白也能听懂的人工智能原理》',
+      '学习资料: 《开放科学：人工智能时代的呼唤》',
+      '标题：开放科学：人工智能时代的呼唤 [计算机类]',
+      '人工智能',
+      '《人工智能时代与人类价值》(epub)',
+      '《AI、通胀与武器》（azw3+epub+mobi+pdf)',
+      '《AI中国方案》（azw3+epub+mobi+pdf)',
+      '《指数型组织2.0：AI时代的增长新范式》（azw3+epub+mobi+pdf)',
+      '《七弈万象：人类与AI博弈史》（azw3+epub+mobi+pdf)',
+      '《我的第一本AI漫画：探秘DeepSeek》(epub)',
+      '《AI大战略》(epub)',
+      '学习资料: 《教材深度学习》',
+    ];
+    const unrelated = [
+      'AI恋综《我的AI搭档—奇异恋爱（2026）》1080P 简中字幕 全06期',
+      'AI恋综《我的AI搭档—奇异恋爱（2026）》1080P 简中字幕 全06期',
+      'AI恋综《我的AI搭档—奇异恋爱（2026）》1080P 简中字幕 更新02期',
+      'AI恋综《我的AI搭档—奇异恋爱（2026）》1080P 简中字幕 更新02期',
+      'AI恋综《我的AI搭档—奇异恋爱(2026)》1080P 简中字幕 全06期',
+    ];
+    const falseNegatives = relevant.filter((title) => getTitleRelevanceRank(title, '人工智能') === null);
+    const falsePositives = unrelated.filter((title) => getTitleRelevanceRank(title, '人工智能') !== null);
+    assert.deepEqual(falseNegatives, []);
+    assert.deepEqual(falsePositives, []);
+
+    assert.notEqual(getTitleRelevanceRank('AI电影制作教程 1080P', '人工智能'), null);
+    assert.notEqual(getTitleRelevanceRank('AI短剧创作实战课 第01集', '人工智能'), null);
+    assert.notEqual(getTitleRelevanceRank('AI动画生成指南 ComfyUI 工作流', '人工智能'), null);
+    assert.notEqual(getTitleRelevanceRank('AI动画生成指南 ComfyUI 工作流 1080P', '人工智能'), null);
+    assert.notEqual(getTitleRelevanceRank('AI短剧从零到精通 1080P', '人工智能'), null);
+    assert.notEqual(getTitleRelevanceRank('AI动画基础教材 1080P', '人工智能'), null);
+    assert.notEqual(getTitleRelevanceRank('人工智能主题纪录片 1080P', '人工智能'), null);
+    assert.equal(getTitleRelevanceRank('AI恋综《我的AI搭档》1080P', 'AI恋综'), 0);
+    assert.equal(getTitleRelevanceRank('AI恋综《我的AI搭档》1080P', 'AI'), null);
+    assert.equal(getTitleRelevanceRank('AI电影 1080P 双语字幕', 'artificial intelligence'), null);
+  });
+
   it('removes unrelated entertainment without losing computer learning material', () => {
     assert.equal(getTitleRelevanceRank('海绵宝宝：皮老板大电影 (2025)', '计算机'), null);
     assert.equal(getTitleRelevanceRank('海绵宝宝：皮老板大电影 (2025)', '海绵宝宝'), 0);
