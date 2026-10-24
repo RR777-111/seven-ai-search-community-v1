@@ -8,6 +8,10 @@ RUN tar -xzf /tmp/pansou.tar.gz --strip-components=1
 COPY docker/pansou-go.mod ./go.mod
 COPY docker/pansou-go.sum ./go.sum
 RUN go mod download && go mod verify
+# Local parser fix: preserve '-' and '_' in Xunlei share IDs; do not invent links.
+COPY docker/pansou-xunlei-id_test.go ./util/community_xunlei_id_test.go
+RUN sed -i '/^var XunleiPanPattern =/s/\[a-zA-Z0-9\]+/[a-zA-Z0-9_-]+/' util/regex_util.go \
+    && go test -mod=readonly ./util
 ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -mod=readonly -trimpath -ldflags='-s -w' -o /out/pansou .
 # Retain upstream and Go/module license texts in the locally built runtime.

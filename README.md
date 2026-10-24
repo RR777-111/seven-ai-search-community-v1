@@ -6,10 +6,12 @@
 
 ## 启动
 
+当前自托管搜索候选位于 `fix/self-hosted-search`，尚未合并 `main`。验收候选请明确克隆该分支；直接克隆默认 `main` 不包含本轮自建搜索修复。
+
 需要 Docker Engine / Docker Desktop 与支持 `--wait` 的 Compose v2 或更新版本。首次构建须能访问 Docker Hub、GitHub codeload、官方 npm、Go 模块服务及 Alpine 软件仓库。
 
 ```bash
-git clone https://github.com/RR777-111/seven-ai-search-community-v1.git
+git clone --branch fix/self-hosted-search https://github.com/RR777-111/seven-ai-search-community-v1.git
 cd seven-ai-search-community-v1
 docker compose up --build --wait
 ```
@@ -50,7 +52,7 @@ PANSOU_PROXY=http://host.docker.internal:7890
 
 ## 构建来源和许可
 
-`docker/pansou.Dockerfile` 校验并编译 PanSou 源码提交 `221665fb2c9279f22af4684ea2d8c0c331eac1cc`，不拉取 PanSou 官方成品镜像。归档 SHA256：`f1476c92c7dc9a5bc04836ef36d48993bdea93e37a2032823f1fc08ee533d3fa`。搜索业务源码保持原样。
+`docker/pansou.Dockerfile` 校验并编译 PanSou 源码提交 `221665fb2c9279f22af4684ea2d8c0c331eac1cc`，不拉取 PanSou 官方成品镜像。归档 SHA256：`f1476c92c7dc9a5bc04836ef36d48993bdea93e37a2032823f1fc08ee533d3fa`。在固定源码上仅补一行迅雷分享 ID 解析字符集：允许 `-` 与 `_`，避免将完整链接额外解析成 `/s/VP` 等错误短链接。构建时运行真实消息解析回归测试；不猜测、补造或修复历史索引坏链，也不改变页面或搜索业务流程。已有安装需重建 PanSou；旧搜索缓存可能在过期前继续显示旧结果。
 
 必要构建适配：使用 Go 1.27.3；`docker/pansou-go.mod` / `.sum` 将不兼容该编译器的 Sonic 1.14.0 固定为官方支持 Go 1.27 的 1.15.4，并锁定其必要间接依赖。镜像中 `/usr/share/licenses/pansou` 保留 PanSou、Go 及已下载模块的许可文本。Node 依赖固定 pnpm 11.13.1 和锁文件；原生 JSON 解析依赖定点更新到 body-parser 2.4.0，修复压缩正文可导致进程退出的安全公告。
 
@@ -61,6 +63,8 @@ PanSou 固定源码的 LICENSE 与 README 声明 MIT，版权 fish2018；其仓�
 ## 2026-10-24 验证范围
 
 - 本机 Docker Desktop、Linux/ARM64：在开始时为空的新构建器中，以 `--no-cache --pull` 完成三个镜像的整体冷构建。API/Web 共享本轮新下载的一次依赖安装（201 包、`reused 0`），PanSou 重新取得固定源码并校验模块；未导入旧构建器缓存。随后新网络、新卷中四服务均健康。构建和实搜通过本机已有网络代理，这不等于独立物理机器、AMD64、离线或所有网络环境通过。
+- 续验从公开修复分支全新克隆，另建初始缓存 0B 的构建器，对 Linux/AMD64 三镜像执行 `--no-cache --pull` 冷构建；首次 Docker Hub 认证请求因客户端直连超时，配置已有代理后通过。获准的迅雷解析补丁随后在同一本轮构建器中以 `--no-cache --pull` 重建 PanSou，并在新网络、新卷中启动四个 AMD64 服务，全部健康。本机 ARM64 上仿真运行 AMD64，PanSou 使用本机平台的 Go 交叉编译；这不是独立机器或原生 AMD64 硬件验证，也不是最终补丁镜像重新使用完全空构建器。
+- 补丁前回归测试有 6 个含 `-`/`_` 的子例失败；补丁后 9 个子例与相关 9 个 Go 包通过（Go 测试在 ARM64 构建平台执行）。AMD64 仿真中的 API 29 项、Web 31 项和两侧类型检查通过。真实查询“计算机”缓存 miss 返回百度 6、夸克 86、迅雷 9、阿里 2、UC 1；“Python 教程”阿里 11，“Linux”百度 4、夸克 24、阿里 9。结果数量随上游时点变化。对同一条原消息逐项比较，正文及完整迅雷链接保留，解析器原来额外生成的 `/s/VP` 消失；这不证明全部分享内容有效。
 - API 29 项、Web 31 项现有测试及类型检查通过；PanSou API/config/util/audit 九个包测试通过。修复后的 JSON、gzip、畸形压缩正文探测后进程存活；该探测未在旧版重现公告所述崩溃，不冒充成功复现。
 - 真实查询“计算机”获得百度 6、夸克 24、迅雷 12、阿里 2、UC 1；“Linux”获得夸克 20；“Python 教程”获得阿里 11。均为首次 API 缓存 miss 的实搜结果，不是 Fixture。该数据仅代表当时网络和公开索引状态，不保证其他关键词或链接有效。
 - 以上实搜使用容器可达代理；同机直连“Python”返回空结果，Telegram 可达性探测失败。不能宣称受限网络零配置可用。
