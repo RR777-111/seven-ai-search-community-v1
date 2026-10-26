@@ -5,12 +5,22 @@ on:
     branches: [main]
     types: [opened, synchronize, reopened]
   workflow_dispatch:
+    inputs:
+      task:
+        description: Choose the existing image publication or the fixed AMD64 offline archive
+        required: true
+        type: choice
+        options:
+          - publish-images
+          - offline-amd64
+        default: publish-images
 
 permissions:
   contents: read
 
 jobs:
   compose-amd64:
+    if: github.event_name != 'workflow_dispatch' || inputs.task != 'offline-amd64'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -146,7 +156,7 @@ jobs:
           docker compose logs --no-color --tail 100 || true
 
   publish-candidate-images:
-    if: github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/release/v1.0.1-')
+    if: github.event_name == 'workflow_dispatch' && inputs.task == 'publish-images' && startsWith(github.ref, 'refs/heads/release/v1.0.1-')
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
@@ -206,3 +216,171 @@ jobs:
           set -euo pipefail
           test "$IMAGE_DIGEST" != ""
           echo "ghcr.io/rr777-111/seven-ai-search-community-v1-${SERVICE}@${IMAGE_DIGEST}" >> "$GITHUB_STEP_SUMMARY"
+
+  offline-amd64:
+    if: github.event_name == 'workflow_dispatch' && inputs.task == 'offline-amd64' && github.ref == 'refs/heads/release/v1.0.1-quality-197fa7d'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Bind the existing candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 197fa7d451386bf95c53512399f5f7070275a240
+          persist-credentials: false
+
+      - name: Verify native AMD64 and frozen source
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = x86_64
+          test "$(docker version --format '{{.Server.Arch}}')" = amd64
+          test "$(git rev-parse HEAD)" = 197fa7d451386bf95c53512399f5f7070275a240
+          docker buildx version
+          df -h "$RUNNER_TEMP"
+
+      - name: Pull, identify, export and verify four fixed images
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/offline-amd64"
+          mkdir -p "$out"
+          map="$out/IMAGE_MAP.tsv"
+          printf 'service\tindex_ref\tamd64_manifest_digest\timage_id\tlocal_tag\tsource_revision\n' > "$map"
+          records=(
+            'web|ghcr.io/rr777-111/seven-ai-search-community-v1-web@sha256:b88c079f9260d9b6d6c99fe812c67de925ad73a0fe0687c5ce4796eae7f6809d|seven-ai-search-community-v1-web:offline-amd64-197fa7d-b88c079f'
+            'api|ghcr.io/rr777-111/seven-ai-search-community-v1-api@sha256:3e35b238f7405f9f82148e9bf171825112293633a6a0a0f748161d77d09cfc42|seven-ai-search-community-v1-api:offline-amd64-197fa7d-3e35b238'
+            'pansou|ghcr.io/rr777-111/seven-ai-search-community-v1-pansou@sha256:8a02eb45f8f23c17a63161b4579924a57cec3a876564a0e891717e4cec93ab36|seven-ai-search-community-v1-pansou:offline-amd64-197fa7d-8a02eb45'
+            'redis|redis:7-alpine@sha256:57e4255cc971b1c8d6f8a6ca283ac01bc3ecdd914273ef6bfaede87aaecd6541|seven-ai-search-community-v1-redis:offline-amd64-197fa7d-57e4255c'
+          )
+          tags=()
+          refs=()
+          for record in "${records[@]}"; do
+            IFS='|' read -r service ref tag <<< "$record"
+            raw="$(docker buildx imagetools inspect --raw "$ref")"
+            amd64_manifest="$(jq -er '[.manifests[] | select(.platform.os == "linux" and .platform.architecture == "amd64") | .digest] | if length == 1 then .[0] else error("expected exactly one linux/amd64 manifest") end' <<< "$raw")"
+            platform_manifest="$(docker buildx imagetools inspect --raw "${ref%@*}@${amd64_manifest}")"
+            jq -e '.layers | length > 0' <<< "$platform_manifest" > /dev/null
+            if jq -e 'any(.layers[]; .mediaType | contains("zstd"))' <<< "$platform_manifest" > /dev/null; then
+              echo "UNSUPPORTED_LAYER_COMPRESSION=zstd for $service"
+              exit 1
+            fi
+            if ! docker pull --platform linux/amd64 --quiet "$ref" > "$out/${service}-pull-raw.log" 2>&1; then
+              python3 - "$out/${service}-pull-raw.log" <<'PY'
+          import re, sys
+          raw = open(sys.argv[1], encoding='utf-8', errors='replace').read()
+          print(re.sub(r'https?://[^\s"\x27]+', '[registry-URL-redacted]', raw)[-3000:])
+          PY
+              exit 1
+            fi
+            platform="$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$ref")"
+            test "$platform" = linux/amd64
+            image_id="$(docker image inspect --format '{{.Id}}' "$ref")"
+            revision='-'
+            if test "$service" != redis; then
+              revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$ref")"
+              test "$revision" = 197fa7d451386bf95c53512399f5f7070275a240
+            fi
+            docker image tag "$ref" "$tag"
+            test "$(docker image inspect --format '{{.Id}}' "$tag")" = "$image_id"
+            printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$service" "$ref" "$amd64_manifest" "$image_id" "$tag" "$revision" >> "$map"
+            tags+=("$tag")
+            refs+=("$ref")
+          done
+          test "${#tags[@]}" -eq 4
+          archive="$out/offline-images-linux-amd64.tar"
+          docker image save --platform linux/amd64 --output "$archive" "${tags[@]}"
+          python3 - "$archive" "$map" <<'PY'
+          import bz2, csv, gzip, hashlib, json, lzma, sys, tarfile
+          def hash_stream(stream):
+              digest = hashlib.sha256()
+              while chunk := stream.read(8 * 1024 * 1024):
+                  digest.update(chunk)
+              return 'sha256:' + digest.hexdigest()
+          archive, mapping = sys.argv[1:]
+          with open(mapping, newline='', encoding='utf-8') as stream:
+              rows = list(csv.DictReader(stream, delimiter='\t'))
+          assert len(rows) == 4
+          with tarfile.open(archive, mode='r:') as saved:
+              names = {member.name for member in saved.getmembers()}
+              manifest = json.load(saved.extractfile('manifest.json'))
+              tagged = {tag: entry for entry in manifest for tag in entry.get('RepoTags', [])}
+              assert set(tagged) == {row['local_tag'] for row in rows}
+              checked_layers = {}
+              for row in rows:
+                  entry = tagged[row['local_tag']]
+                  config_name = entry['Config']
+                  assert config_name in names
+                  config_bytes = saved.extractfile(config_name).read()
+                  assert 'sha256:' + hashlib.sha256(config_bytes).hexdigest() == row['image_id']
+                  config = json.loads(config_bytes)
+                  assert (config['os'], config['architecture']) == ('linux', 'amd64')
+                  layers = entry['Layers']
+                  diff_ids = config['rootfs']['diff_ids']
+                  assert len(layers) == len(diff_ids)
+                  for layer, expected in zip(layers, diff_ids):
+                      assert layer in names
+                      if layer not in checked_layers:
+                          with saved.extractfile(layer) as content:
+                              raw_digest = hash_stream(content)
+                          if layer.startswith('blobs/sha256/'):
+                              assert raw_digest == 'sha256:' + layer.rsplit('/', 1)[-1]
+                          expanded_digest = raw_digest
+                          if raw_digest != expected:
+                              with saved.extractfile(layer) as probe:
+                                  magic = probe.read(8)
+                              if magic.startswith(b'\x1f\x8b'):
+                                  with saved.extractfile(layer) as content:
+                                      with gzip.GzipFile(fileobj=content) as expanded:
+                                          expanded_digest = hash_stream(expanded)
+                              elif magic.startswith(b'BZh'):
+                                  with saved.extractfile(layer) as content:
+                                      with bz2.BZ2File(content) as expanded:
+                                          expanded_digest = hash_stream(expanded)
+                              elif magic.startswith(b'\xfd7zXZ\x00'):
+                                  with saved.extractfile(layer) as content:
+                                      with lzma.LZMAFile(content) as expanded:
+                                          expanded_digest = hash_stream(expanded)
+                              elif magic.startswith(b'\x28\xb5\x2f\xfd'):
+                                  raise RuntimeError('UNSUPPORTED_LAYER_COMPRESSION=zstd')
+                              else:
+                                  raise AssertionError('saved layer bytes differ from diff_id and compression is unknown')
+                          checked_layers[layer] = expanded_digest
+                      assert checked_layers[layer] == expected
+          print('Four AMD64 tags, configs and all saved layer checksums verified')
+          PY
+          gzip -6 "$archive"
+          cd "$out"
+          sha256sum offline-images-linux-amd64.tar.gz IMAGE_MAP.tsv > SHA256SUMS.txt
+          upload_bytes="$(stat -c '%s' offline-images-linux-amd64.tar.gz IMAGE_MAP.tsv SHA256SUMS.txt | awk '{sum += $1} END {printf "%.0f", sum}')"
+          if test "$upload_bytes" -gt 999000000; then
+            echo "Upload files exceed the 999 MB safety bound; no artifact will be uploaded"
+            exit 1
+          fi
+          docker image rm -f "${tags[@]}" "${refs[@]}"
+          for tag in "${tags[@]}"; do
+            if docker image inspect "$tag" > /dev/null 2>&1; then
+              echo "Image tag remained before offline import: $tag"
+              exit 1
+            fi
+          done
+          docker image load --input offline-images-linux-amd64.tar.gz
+          while IFS=$'\t' read -r service ref amd64_manifest image_id tag revision; do
+            test "$service" != service || continue
+            test "$(docker image inspect --format '{{.Id}}' "$tag")" = "$image_id"
+            test "$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$tag")" = linux/amd64
+          done < IMAGE_MAP.tsv
+          echo 'Offline Docker load verified all four fixed tags on the isolated AMD64 runner'
+          stat -c '%n %s bytes' offline-images-linux-amd64.tar.gz IMAGE_MAP.tsv SHA256SUMS.txt
+
+      - name: Preserve only the complete checked archive
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: offline-amd64-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/offline-amd64/offline-images-linux-amd64.tar.gz
+            ${{ runner.temp }}/offline-amd64/IMAGE_MAP.tsv
+            ${{ runner.temp }}/offline-amd64/SHA256SUMS.txt
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
