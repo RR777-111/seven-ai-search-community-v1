@@ -1,6 +1,6 @@
 # 给豆包读取的 Community 安装说明
 
-**版本核对先于安装命令：**若包内有 `VERSION_MANIFEST.json` 或 `CANDIDATE_STATUS_CN.md`，先读它们，再核对 `compose.yaml` 中 API 镜像 digest。若候选要求搜索质量提交 `3259c8e`，但版本清单的新 API 公开 digest 为空，或 Compose 仍指向旧摘要 `sha256:d473dd08…`，应明确告知用户：这不是可一条命令安装新版搜索的公开包；停止下发 `docker compose up --wait -d`，不要让用户通过启动旧镜像来“验证”新版功能。等待已发布且经过验收的新版镜像及安装包。仅凭容器启动或实际搜到结果，也无法证明旧镜像包含指定提交。
+**版本核对先于安装命令：**若包内有 `VERSION_MANIFEST.json` 或 `CANDIDATE_STATUS_CN.md`，先读它们，再核对 `compose.yaml` 中 API 和 Web 镜像 digest。若候选要求搜索质量提交 `3259c8e`，但版本清单的新 API 或 Web 公开 digest 为空，或 Compose 仍指向旧摘要（API 为 `sha256:d473dd08…`），应明确告知用户：这不是可一条命令安装新版搜索的公开包；停止下发 `docker compose up --wait -d`，不要让用户通过启动旧镜像来“验证”新版功能。等待已发布且经过验收的新版镜像及安装包。仅凭容器启动或实际搜到结果，也无法证明旧镜像包含指定提交。
 
 目标：指导零基础用户在自己的 Mac 或 Windows x64 电脑上，使用此安装包的 `compose.yaml` 启动 Seven AI Search Community。你是文字指导助手；除非用户明确展示可用的本机操作工具及其结果，否则不要声称自己已远程操作、部署或验收。
 
